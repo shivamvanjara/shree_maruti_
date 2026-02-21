@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shree Maruti Plastic | Admin</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        :root {
+            --bg: #f1f5f9; --surface: #ffffff; --primary: #0f172a; --accent: #6366f1;
+            --danger: #ef4444; --success: #10b981; --text-main: #1e293b; --text-muted: #64748b;
+            --radius-lg: 16px; --radius-md: 12px; --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-main); overscroll-behavior-y: contain; }
+
+        header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .brand-logo { height: 32px; width: 32px; border-radius: 6px; object-fit: contain; }
+        .brand-name { font-weight: 800; font-size: 0.9rem; color: var(--primary); text-transform: uppercase; letter-spacing: -0.5px; }
+
+        .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 280px; background: var(--primary); color: white; padding: 24px; z-index: 2000; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; }
+        .sidebar.active { transform: translateX(0); }
+        .overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); display: none; z-index: 1500; }
+        .overlay.active { display: block; }
+
+        .stat-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: var(--radius-md); margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-card .label { font-size: 0.6rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 1rem; font-weight: 800; display: block; margin-top: 2px; }
+
+        .main-content { max-width: 1400px; margin: 15px auto; padding: 0 12px; }
+        .section-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+        @media (max-width: 1024px) { .section-grid { grid-template-columns: 1fr; } }
+        
+        .card { background: var(--surface); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow); }
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+        
+        /* Mobile Specific Grid */
+        @media (max-width: 600px) { .inventory-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
+
+        .item-card { background: white; padding: 12px; border-radius: var(--radius-md); border: 1px solid #f1f5f9; transition: transform 0.2s; position: relative; }
+        .item-card:active { transform: scale(0.98); }
+        .low-stock-alert { border: 2px solid var(--danger) !important; background: #fff1f2; }
+        
+        .btn { padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; font-size: 0.85rem; transition: 0.2s; }
+        .btn:active { opacity: 0.7; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: white; border: 1px solid #e2e8f0; color: var(--text-main); }
+
+        .modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 3000; padding: 20px; }
+        .modal-content { background: white; width: 100%; max-width: 400px; border-radius: var(--radius-lg); padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
+        
+        .input-group { display: flex; flex-direction: column; gap: 12px; }
+        .input-group input { padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-family: inherit; font-size: 0.9rem; }
+
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--primary); color: white; padding: 12px 24px; border-radius: 30px; font-weight: 600; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 9999; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+
+<div id="toast" class="toast">Success!</div>
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <span style="font-weight:800; color:var(--accent); letter-spacing: 1px; font-size: 0.8rem;">DASHBOARD</span>
+        <button onclick="toggleSidebar()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
+    </div>
+
+    <div style="margin-bottom: 24px;">
+        <div style="font-size: 0.6rem; color: #94a3b8; font-weight: 700; margin-bottom: 10px; text-transform: uppercase;">Top Sellers (30d)</div>
+        <div id="top-sellers-list"></div>
+    </div>
+
+    <div class="stat-card">
+        <span class="label">Today In / Out</span>
+        <span class="value"><span id="inToday" style="color:var(--success)">0</span> / <span id="outToday" style="color:var(--danger)">0</span></span>
+    </div>
+    
+    <div class="stat-card">
+        <span class="label">Current Month In</span>
+        <span id="inMonth" class="value" style="color:var(--success)">0</span>
+    </div>
+
+    <div class="stat-card">
+        <span class="label">Current Month Out</span>
+        <span id="outMonth" class="value" style="color:var(--danger)">0</span>
+    </div>
+
+    <div class="stat-card">
+        <span class="label">Previous Month Out</span>
+        <span id="outPrev" class="value" style="color:#94a3b8">0</span>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%; background:var(--danger); margin-top: 10px;" onclick="downloadPDF()">📄 Export Report</button>
+</aside>
+
+<header>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <button onclick="toggleSidebar()" style="background:#f1f5f9; border:none; padding:8px; border-radius:8px; cursor:pointer;">📊</button>
+        <img src="logo.png" alt="" class="brand-logo" onerror="this.style.display='none'">
+        <span class="brand-name">SMP Admin</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <button class="btn btn-primary" onclick="openModal()">+ Product</button>
+        <button class="btn btn-outline" onclick="logout()">Logout</button>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="section-grid">
+        <div class="card">
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <input type="text" id="search" style="flex:1; padding:12px; border-radius:10px; border:1px solid #e2e8f0; outline:none;" placeholder="Search products or sizes..." onkeyup="searchProduct()">
+                <button class="btn btn-outline" onclick="toggleLowStockFilter()">⚠️ Low</button>
+            </div>
+            <div id="products-list" class="inventory-grid"></div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin:0 0 15px 0; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center;">
+                Pending Tasks 
+                <span id="req-count" style="background:var(--accent); color:white; padding:2px 8px; border-radius:10px; font-size:0.7rem;">0</span>
+            </h3>
+            <div id="requests"></div>
+        </div>
+    </div>
+</main>
+
+<div class="modal" id="productModal">
+    <div class="modal-content">
+        <h2 id="modalTitle" style="margin-top:0; font-size:1.1rem; color:var(--primary);">Product Details</h2>
+        <input type="hidden" id="editId">
+        <div class="input-group">
+            <input type="text" id="pname" placeholder="Product Name (e.g., LD Bag)">
+            <input type="text" id="psize" placeholder="Size (e.g., 10x12)">
+            <input type="number" id="pstock" placeholder="Initial Stock Count">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                <button class="btn btn-primary" onclick="handleSave()">Save Product</button>
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="stockModal">
+    <div class="modal-content">
+        <h2 style="margin-top:0; font-size:1.1rem; color:var(--primary);">Quick Stock Update</h2>
+        <input type="hidden" id="stockProdId">
+        <input type="hidden" id="stockType">
+        <div class="input-group">
+            <div id="stockItemName" style="font-weight:700; font-size:0.85rem; color:var(--accent); background:#f5f3ff; padding:8px; border-radius:6px;"></div>
+            <input type="number" id="stockAmount" placeholder="Enter Quantity">
+            <input type="text" id="stockNote" placeholder="Reason (e.g., New Production)">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                <button id="stockConfirmBtn" class="btn btn-primary" onclick="confirmStockAdjust()">Confirm</button>
+                <button class="btn btn-outline" onclick="closeStockModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+</script>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>
